@@ -2,7 +2,7 @@ const https = require("https");
 const http = require("http");
 
 const PORT = process.env.PORT || 3000;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const SYSTEM_PROMPT = `Você é o assistente de voz de um sistema de compra de sucata (ferro-velho).
 Seu trabalho é interpretar comandos de voz em português brasileiro (informal, com erros, sotaque regional) e retornar APENAS um JSON com a ação a executar.
@@ -63,23 +63,24 @@ const server = http.createServer((req, res) => {
 
       var texto = payload.texto || "";
 
-      var dadosGemini = JSON.stringify({
-        contents: [{
-          parts: [{ text: SYSTEM_PROMPT + "\n\nContexto: " + (payload.contexto || "") + "\n\nComando: " + texto }]
-        }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 500
-        }
+      var dadosGroq = JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: "Contexto: " + (payload.contexto || "") + "\n\nComando: " + texto }
+        ],
+        temperature: 0.1,
+        max_tokens: 500
       });
 
       var opcoes = {
-        hostname: "generativelanguage.googleapis.com",
-        path: "/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_API_KEY,
+        hostname: "api.groq.com",
+        path: "/openai/v1/chat/completions",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(dadosGemini)
+          "Authorization": "Bearer " + GROQ_API_KEY,
+          "Content-Length": Buffer.byteLength(dadosGroq)
         }
       };
 
@@ -88,10 +89,10 @@ const server = http.createServer((req, res) => {
         resAPI.on("data", chunk => { resposta += chunk; });
         resAPI.on("end", () => {
           try {
-            console.log("STATUS GEMINI:", resAPI.statusCode);
-            console.log("RESPOSTA GEMINI:", resposta.substring(0, 500));
+            console.log("STATUS GROQ:", resAPI.statusCode);
+            console.log("RESPOSTA GROQ:", resposta.substring(0, 500));
             var json = JSON.parse(resposta);
-            var textoResp = json.candidates[0].content.parts[0].text;
+            var textoResp = json.choices[0].message.content;
             textoResp = textoResp.replace(/```json|```/g, "").trim();
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ resultado: textoResp }));
@@ -110,7 +111,7 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({ error: err.message }));
       });
 
-      reqAPI.write(dadosGemini);
+      reqAPI.write(dadosGroq);
       reqAPI.end();
     });
     return;
@@ -128,5 +129,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log("Servidor rodando na porta " + PORT);
-  console.log("GEMINI_API_KEY configurada:", !!GEMINI_API_KEY);
+  console.log("GROQ_API_KEY configurada:", !!GROQ_API_KEY);
 });
