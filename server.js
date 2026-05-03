@@ -64,7 +64,7 @@ const server = http.createServer((req, res) => {
       var texto = payload.texto || "";
 
       var dadosGroq = JSON.stringify({
-        model: "llama3-8b-8192",
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: "Contexto: " + (payload.contexto || "") + "\n\nComando: " + texto }
@@ -79,55 +79,4 @@ const server = http.createServer((req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": "Bearer " + GROQ_API_KEY,
-          "Content-Length": Buffer.byteLength(dadosGroq)
-        }
-      };
-
-      var reqAPI = https.request(opcoes, resAPI => {
-        var resposta = "";
-        resAPI.on("data", chunk => { resposta += chunk; });
-        resAPI.on("end", () => {
-          try {
-            console.log("STATUS GROQ:", resAPI.statusCode);
-            console.log("RESPOSTA GROQ:", resposta.substring(0, 500));
-            var json = JSON.parse(resposta);
-            var textoResp = json.choices[0].message.content;
-            textoResp = textoResp.replace(/```json|```/g, "").trim();
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ resultado: textoResp }));
-          } catch(e) {
-            console.log("ERRO:", e.message);
-            console.log("RESPOSTA COMPLETA:", resposta);
-            res.writeHead(500);
-            res.end(JSON.stringify({ error: e.message, resposta: resposta }));
-          }
-        });
-      });
-
-      reqAPI.on("error", err => {
-        console.log("ERRO CONEXAO:", err.message);
-        res.writeHead(500);
-        res.end(JSON.stringify({ error: err.message }));
-      });
-
-      reqAPI.write(dadosGroq);
-      reqAPI.end();
-    });
-    return;
-  }
-
-  if (req.method === "GET" && req.url === "/") {
-    res.writeHead(200);
-    res.end("Servidor Sucata OK");
-    return;
-  }
-
-  res.writeHead(404);
-  res.end("Not found");
-});
-
-server.listen(PORT, () => {
-  console.log("Servidor rodando na porta " + PORT);
-  console.log("GROQ_API_KEY configurada:", !!GROQ_API_KEY);
-});
+          "Authorization": "Bearer " + GROQ_API_
