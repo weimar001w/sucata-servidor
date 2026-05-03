@@ -88,19 +88,24 @@ const server = http.createServer((req, res) => {
         resAPI.on("data", chunk => { resposta += chunk; });
         resAPI.on("end", () => {
           try {
+            console.log("STATUS GEMINI:", resAPI.statusCode);
+            console.log("RESPOSTA GEMINI:", resposta.substring(0, 500));
             var json = JSON.parse(resposta);
             var textoResp = json.candidates[0].content.parts[0].text;
             textoResp = textoResp.replace(/```json|```/g, "").trim();
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ resultado: textoResp }));
           } catch(e) {
+            console.log("ERRO:", e.message);
+            console.log("RESPOSTA COMPLETA:", resposta);
             res.writeHead(500);
-            res.end(JSON.stringify({ error: "Erro ao processar resposta: " + e.message }));
+            res.end(JSON.stringify({ error: e.message, resposta: resposta }));
           }
         });
       });
 
       reqAPI.on("error", err => {
+        console.log("ERRO CONEXAO:", err.message);
         res.writeHead(500);
         res.end(JSON.stringify({ error: err.message }));
       });
@@ -123,4 +128,5 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log("Servidor rodando na porta " + PORT);
+  console.log("GEMINI_API_KEY configurada:", !!GEMINI_API_KEY);
 });
